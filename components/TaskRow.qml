@@ -3,6 +3,7 @@ import qs.Commons
 
 Item {
   id: root
+  property color foregroundColor: "white"
   property string taskId: ""
   property string name: ""
   property string status: "never"
@@ -29,20 +30,22 @@ Item {
     anchors.fill: parent
     spacing: Style.space(8)
 
-    Text { text: root.selected ? "›" : " "; width: 8 }
+    Text { text: root.selected ? "›" : " "; color: root.foregroundColor; width: 8 }
 
     Text {
       text: root.running ? "◉" : (root.status === "success" ? "●" : (root.status === "failed" ? "✕" : "○"))
+      color: root.foregroundColor
     }
-    Text { text: root.name; elide: Text.ElideRight; width: 152 }
+    Text { text: root.name; color: root.foregroundColor; elide: Text.ElideRight; width: 210 }
     Text {
       text: root.secondaryText
-      width: 62
+      color: root.foregroundColor
+      width: 88
       elide: Text.ElideRight
       visible: root.selected || hitArea.containsMouse
       opacity: 0.75
     }
-    Text { text: root.scheduled ? "⏱" : ""; width: 16 }
+    Text { text: root.scheduled ? "⏱" : ""; color: root.foregroundColor; width: 16 }
 
     Rectangle {
       width: 44
@@ -50,10 +53,12 @@ Item {
       radius: 4
       color: "transparent"
       border.width: 1
+      border.color: root.foregroundColor
 
       Text {
         anchors.centerIn: parent
         text: root.running ? "Stop" : "Run"
+        color: root.foregroundColor
       }
 
       MouseArea {

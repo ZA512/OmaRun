@@ -615,6 +615,7 @@ Panel {
             model: root.tasks
             delegate: Components.TaskRow {
               width: parent.width
+              foregroundColor: root.barForeground
               taskId: String(modelData.id || "")
               name: String(modelData.name || "")
               status: String((modelData.lastStatus && modelData.lastStatus.status) || "never")

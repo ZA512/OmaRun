@@ -4,6 +4,7 @@ import qs.Commons
 Item {
   id: root
   implicitHeight: editorContent.implicitHeight
+  height: visible ? implicitHeight : 0
   property color foregroundColor: "white"
   property string mode: "add"
   property string taskId: ""
@@ -101,9 +102,8 @@ Item {
     Row {
       spacing: Style.space(8)
       Text { text: root.advancedExpanded ? "▾ Advanced" : "▸ Advanced"; color: root.foregroundColor }
-      MouseArea {
-        anchors.fill: parent
-        onClicked: root.advancedExpanded = !root.advancedExpanded
+      TapHandler {
+        onTapped: root.advancedExpanded = !root.advancedExpanded
       }
     }
 

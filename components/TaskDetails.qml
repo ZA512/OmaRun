@@ -4,6 +4,7 @@ import qs.Commons
 Item {
   id: root
   implicitHeight: detailsContent.implicitHeight
+  height: visible ? implicitHeight : 0
   property color foregroundColor: "white"
   property string taskId: ""
   property string name: ""
@@ -28,9 +29,8 @@ Item {
       Text { text: "←"; color: root.foregroundColor; font.bold: true }
       Text { text: root.name; color: root.foregroundColor; font.bold: true }
 
-      MouseArea {
-        anchors.fill: parent
-        onClicked: root.backRequested()
+      TapHandler {
+        onTapped: root.backRequested()
       }
     }
 

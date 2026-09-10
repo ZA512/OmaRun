@@ -373,7 +373,7 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(340))
-    contentHeight: panel.fittedContentHeight(content.implicitHeight)
+    contentHeight: panel.fittedContentHeight(Math.max(content.implicitHeight, Style.space(110)))
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -430,17 +430,29 @@ Panel {
         }
       }
 
-      Column {
-        id: content
+      Flickable {
+        id: contentScroll
         anchors.fill: parent
-        spacing: Style.space(8)
+        contentWidth: content.width
+        contentHeight: content.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        interactive: contentHeight > height
 
-        Row {
-          width: parent.width
+        Column {
+          id: content
+          width: Math.max(1, panel.contentWidth - panel.padding * 2 - Style.space(2))
           spacing: Style.space(8)
+
+        Item {
+          width: parent.width
+          implicitHeight: Math.max(title.implicitHeight, addTaskButton.implicitHeight)
+          height: implicitHeight
 
           Text {
             id: title
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
             text: "OmaRun"
             color: root.barForeground
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
@@ -448,31 +460,23 @@ Panel {
             font.bold: true
           }
 
-          Item {
-            width: Math.max(0, parent.width - title.implicitWidth - addTaskButton.width - parent.spacing)
-            height: 1
-          }
-
-          Rectangle {
+          Text {
             id: addTaskButton
-            width: 68
-            height: 24
-            radius: 4
-            color: "transparent"
-            border.width: 1
-            border.color: root.barForeground
+            width: Style.space(56)
+            height: Style.space(24)
+            x: Style.space(250)
+            y: Math.max(0, (parent.height - height) / 2)
+            text: "+ Add"
+            color: root.barForeground
+            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.pixelSize: Style.font.body
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
 
-            Text {
-              anchors.centerIn: parent
-              text: "+ Add"
-              color: root.barForeground
-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
-              font.pixelSize: Style.font.caption
-              font.bold: true
-            }
-            opacity: 0.9
             MouseArea {
               anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
               onClicked: root.openAddEditor()
             }
           }
@@ -531,6 +535,7 @@ Panel {
         Column {
           visible: root.showingEditor && root.editingTask && root.confirmingDelete
           width: parent.width
+          height: visible ? implicitHeight : 0
           spacing: 6
           Text { text: "Delete this task? Script source file will not be deleted."; wrapMode: Text.WordWrap }
           Row {
@@ -571,32 +576,30 @@ Panel {
         Column {
           visible: !root.showingEditor && root.selectedTaskId === ""
           width: parent.width
+          height: visible ? implicitHeight : 0
           spacing: 4
 
           Text {
             visible: root.tasks.length === 0
+            width: Style.space(130)
+            height: Style.space(24)
             text: "No commands yet"
             color: root.barForeground
             opacity: 0.8
           }
 
-          Rectangle {
+          Text {
             visible: root.tasks.length === 0
-            width: 128
-            height: 28
-            radius: 4
-            color: "transparent"
-            border.width: 1
-            border.color: root.barForeground
+            text: "+ Add a command"
+            color: root.barForeground
+            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
 
-            Text {
-              anchors.centerIn: parent
-              text: "+ Add a command"
-              color: root.barForeground
-              font.bold: true
-            }
             MouseArea {
               anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
               onClicked: root.openAddEditor()
             }
           }
@@ -621,6 +624,7 @@ Panel {
             }
           }
         }
+      }
       }
     }
   }

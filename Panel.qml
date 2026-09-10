@@ -490,6 +490,7 @@ Panel {
         Components.TaskEditor {
           visible: root.showingEditor
           width: parent.width
+          foregroundColor: root.barForeground
           mode: root.editingTask ? "edit" : "add"
           taskId: root.selectedTask ? String(root.selectedTask.id || "") : ""
           name: root.editorName
@@ -550,6 +551,7 @@ Panel {
         Components.TaskDetails {
           visible: !root.showingEditor && root.selectedTaskId !== "" && root.selectedTask
           width: parent.width
+          foregroundColor: root.barForeground
           taskId: root.selectedTask ? String(root.selectedTask.id || "") : ""
           name: root.selectedTask ? String(root.selectedTask.name || "") : ""
           running: root.selectedTask ? root.selectedTask.running === true : false

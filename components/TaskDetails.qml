@@ -3,6 +3,8 @@ import qs.Commons
 
 Item {
   id: root
+  implicitHeight: detailsContent.implicitHeight
+  property color foregroundColor: "white"
   property string taskId: ""
   property string name: ""
   property string statusText: ""
@@ -17,13 +19,14 @@ Item {
   signal deleteRequested()
 
   Column {
-    anchors.fill: parent
+    id: detailsContent
+    width: parent.width
     spacing: Style.space(8)
 
     Row {
       spacing: Style.space(8)
-      Text { text: "←"; font.bold: true }
-      Text { text: root.name; font.bold: true }
+      Text { text: "←"; color: root.foregroundColor; font.bold: true }
+      Text { text: root.name; color: root.foregroundColor; font.bold: true }
 
       MouseArea {
         anchors.fill: parent
@@ -31,8 +34,8 @@ Item {
       }
     }
 
-    Text { text: root.statusText; wrapMode: Text.Wrap }
-    Text { text: root.nextRunText; visible: root.nextRunText !== "" }
+    Text { text: root.statusText; color: root.foregroundColor; wrapMode: Text.Wrap }
+    Text { text: root.nextRunText; color: root.foregroundColor; visible: root.nextRunText !== "" }
 
     Row {
       spacing: Style.space(8)
@@ -40,12 +43,14 @@ Item {
         width: 64
         height: 24
         border.width: 1
+        border.color: root.foregroundColor
         radius: 4
         color: "transparent"
 
         Text {
           anchors.centerIn: parent
           text: root.running ? "Stop" : "Run"
+          color: root.foregroundColor
         }
         MouseArea {
           anchors.fill: parent
@@ -60,9 +65,10 @@ Item {
         width: 56
         height: 24
         border.width: 1
+        border.color: root.foregroundColor
         radius: 4
         color: "transparent"
-        Text { anchors.centerIn: parent; text: "Edit" }
+        Text { anchors.centerIn: parent; text: "Edit"; color: root.foregroundColor }
         MouseArea {
           anchors.fill: parent
           onClicked: root.editRequested()
@@ -73,9 +79,10 @@ Item {
         width: 64
         height: 24
         border.width: 1
+        border.color: root.foregroundColor
         radius: 4
         color: "transparent"
-        Text { anchors.centerIn: parent; text: "Delete" }
+        Text { anchors.centerIn: parent; text: "Delete"; color: root.foregroundColor }
         MouseArea {
           anchors.fill: parent
           onClicked: root.deleteRequested()
@@ -85,6 +92,7 @@ Item {
 
     Text {
       text: root.logText
+      color: root.foregroundColor
       wrapMode: Text.WrapAnywhere
       width: parent.width
     }

@@ -27,35 +27,66 @@ Item {
     onClicked: root.openDetailsRequested(root.taskId)
   }
 
-  Row {
+  Item {
     anchors.fill: parent
-    spacing: Style.space(8)
 
     Text {
+      id: chevron
       text: root.expanded ? "▾" : "▸"
       color: root.foregroundColor
       width: Style.space(12)
+      anchors.left: parent.left
+      anchors.verticalCenter: parent.verticalCenter
       horizontalAlignment: Text.AlignHCenter
     }
 
     Text {
+      id: statusIcon
       text: root.running ? "◉" : (root.status === "success" ? "●" : (root.status === "failed" ? "✕" : "○"))
       color: root.foregroundColor
+      anchors.left: chevron.right
+      anchors.leftMargin: Style.space(8)
+      anchors.verticalCenter: parent.verticalCenter
     }
-    Text { text: root.name; color: root.foregroundColor; elide: Text.ElideRight; width: Style.space(270) }
     Text {
+      id: taskName
+      text: root.name
+      color: root.foregroundColor
+      elide: Text.ElideRight
+      anchors.left: statusIcon.right
+      anchors.leftMargin: Style.space(8)
+      anchors.right: secondary.left
+      anchors.rightMargin: Style.space(8)
+      anchors.verticalCenter: parent.verticalCenter
+    }
+    Text {
+      id: secondary
       text: root.secondaryText
       color: root.foregroundColor
-      width: 88
+      width: Style.space(140)
       elide: Text.ElideRight
       visible: root.selected || hitArea.containsMouse
       opacity: 0.75
+      anchors.right: scheduleIcon.left
+      anchors.rightMargin: Style.space(8)
+      anchors.verticalCenter: parent.verticalCenter
     }
-    Text { text: root.scheduled ? "⏱" : ""; color: root.foregroundColor; width: 16 }
+    Text {
+      id: scheduleIcon
+      text: root.scheduled ? "⏱" : ""
+      color: root.foregroundColor
+      width: Style.space(16)
+      anchors.right: runButton.left
+      anchors.rightMargin: Style.space(8)
+      anchors.verticalCenter: parent.verticalCenter
+    }
 
     Rectangle {
-      width: 44
-      height: 22
+      id: runButton
+      width: Style.space(48)
+      height: Style.space(22)
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
       radius: 4
       color: "transparent"
       border.width: 1

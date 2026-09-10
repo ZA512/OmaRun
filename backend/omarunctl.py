@@ -335,7 +335,14 @@ def cmd_status(args: argparse.Namespace) -> None:
 
 def cmd_log(args: argparse.Namespace) -> None:
     validate_task_id(args.id)
-    print(json.dumps({"id": args.id, **_read_log(args.id)}, ensure_ascii=False, indent=2))
+    running = _run_systemctl(["is-active", _service_name(args.id)], check=False).returncode == 0
+    print(
+        json.dumps(
+            {"id": args.id, "running": running, **_read_log(args.id, prefer_running=running)},
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

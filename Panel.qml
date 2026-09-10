@@ -107,6 +107,9 @@ Panel {
   }
 
   function openDetails(taskId) {
+    detailsStatusText = ""
+    detailsLogText = ""
+    detailsNextRunText = ""
     selectedTaskId = taskId
     showingEditor = false
     refreshStatus(taskId)
@@ -141,6 +144,19 @@ Panel {
     editorScheduleInterval = 6
     editorScheduleTime = "03:00"
     editorScheduleWeekdays = []
+    taskEditor.loadValues({
+      "name": "",
+      "command": "",
+      "arguments": "",
+      "workingDirectory": "",
+      "timeoutSeconds": 0,
+      "advancedExpanded": false,
+      "scheduleEnabled": false,
+      "scheduleMode": "every-hours",
+      "scheduleInterval": 6,
+      "scheduleTime": "03:00",
+      "scheduleWeekdays": []
+    })
   }
 
   function openEditEditor(task) {
@@ -161,6 +177,19 @@ Panel {
     editorScheduleInterval = Number(schedule.interval || 6)
     editorScheduleTime = String(schedule.time || "03:00")
     editorScheduleWeekdays = schedule.weekdays || []
+    taskEditor.loadValues({
+      "name": root.editorName,
+      "command": root.editorCommand,
+      "arguments": root.editorArguments,
+      "workingDirectory": root.editorWorkingDirectory,
+      "timeoutSeconds": root.editorTimeoutSeconds,
+      "advancedExpanded": false,
+      "scheduleEnabled": root.editorScheduleEnabled,
+      "scheduleMode": root.editorScheduleMode,
+      "scheduleInterval": root.editorScheduleInterval,
+      "scheduleTime": root.editorScheduleTime,
+      "scheduleWeekdays": root.editorScheduleWeekdays
+    })
   }
 
   function refreshStatus(taskId) {
@@ -482,7 +511,7 @@ Panel {
       Flickable {
         id: contentScroll
         anchors.fill: parent
-        contentWidth: content.width
+        contentWidth: width
         contentHeight: content.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
@@ -490,7 +519,8 @@ Panel {
 
         Column {
           id: content
-          width: Math.max(1, panel.contentWidth - panel.padding * 2 - Style.space(2))
+          x: Style.space(2)
+          width: Math.max(1, contentScroll.width - Style.space(4))
           spacing: Style.space(8)
 
         Item {
@@ -541,6 +571,7 @@ Panel {
         }
 
         Components.TaskEditor {
+          id: taskEditor
           visible: root.showingEditor
           width: parent.width
           foregroundColor: root.barForeground

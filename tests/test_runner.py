@@ -82,6 +82,29 @@ class RunnerIntegrationTests(unittest.TestCase):
         status = json.loads(self.status_path().read_text())
         self.assertEqual(status["status"], "stopped")
 
+    def test_launch_failure_records_status_and_log(self):
+        self.write_task("")
+        tasks_path = self.home / ".config" / "omarun" / "tasks.json"
+        data = json.loads(tasks_path.read_text())
+        data["tasks"][0]["command"] = "/definitely/missing/omarun-command"
+        tasks_path.write_text(json.dumps(data))
+
+        result = subprocess.run(
+            [sys.executable, str(RUNNER), "--task-id", self.task_id],
+            env=self.env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        status = json.loads(self.status_path().read_text())
+        self.assertEqual(status["status"], "failed")
+        self.assertIn("Failed to start", status["message"])
+        log = self.status_path().with_name("last.log").read_text()
+        self.assertIn("/definitely/missing/omarun-command", log)
+        self.assertIn("[ERROR]", log)
+
 
 if __name__ == "__main__":
     unittest.main()

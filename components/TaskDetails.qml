@@ -147,9 +147,8 @@ Item {
     }
 
     Column {
-      visible: root.logText !== ""
       width: parent.width
-      height: visible ? implicitHeight : 0
+      height: implicitHeight
       spacing: Style.space(4)
 
       Text {
@@ -162,7 +161,9 @@ Item {
       }
       Text {
         width: parent.width
-        text: root.logText
+        text: root.logText !== ""
+          ? root.logText
+          : (root.running ? "Waiting for output…" : "No output was produced by the last run.")
         color: root.foregroundColor
         font.family: Style.font.family
         wrapMode: Text.WrapAnywhere

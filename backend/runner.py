@@ -92,27 +92,39 @@ def run_task(task_id: str) -> int:
     state_dir = task_state_dir(task_id)
     started_at = _utc_now()
     start_ts = time.monotonic()
-
-    argv = _build_argv(task)
-    env = _build_env(task)
-    working_directory = str(task.get("workingDirectory", "")).strip()
-    timeout_seconds = int(task.get("timeoutSeconds", 0) or 0)
-
-    if working_directory and not Path(working_directory).exists():
-        raise OmaRunError(f"Working directory does not exist: {working_directory}")
-
     current_log = state_dir / "current.log"
+    raw_command = str(task.get("command", "")).strip()
+    raw_arguments = str(task.get("arguments", "")).strip()
+    displayed_command = " ".join(part for part in (raw_command, raw_arguments) if part)
+    launch_error: Exception | None = None
+
     with current_log.open("w", encoding="utf-8", buffering=1) as output:
-        output.write(f"$ {' '.join(shlex.quote(arg) for arg in argv)}\n\n")
-        process = subprocess.Popen(
-            argv,
-            cwd=working_directory or None,
-            env=env,
-            stdout=output,
-            stderr=subprocess.STDOUT,
-            text=True,
-            start_new_session=True,
-        )
+        output.write(f"$ {displayed_command}\n\n")
+        try:
+            argv = _build_argv(task)
+            env = _build_env(task)
+            working_directory = str(task.get("workingDirectory", "")).strip()
+            timeout_seconds = int(task.get("timeoutSeconds", 0) or 0)
+
+            if working_directory and not Path(working_directory).exists():
+                raise OmaRunError(f"Working directory does not exist: {working_directory}")
+
+            process = subprocess.Popen(
+                argv,
+                cwd=working_directory or None,
+                env=env,
+                stdout=output,
+                stderr=subprocess.STDOUT,
+                text=True,
+                start_new_session=True,
+            )
+        except Exception as exc:
+            launch_error = exc
+            output.write(f"[ERROR] {exc}\n")
+
+        if launch_error is not None:
+            process = None
+
         timed_out = False
         stopped_by_user = False
         stop_requested = False
@@ -121,41 +133,59 @@ def run_task(task_id: str) -> int:
             nonlocal stop_requested
             stop_requested = True
 
-        previous_sigterm = signal.signal(signal.SIGTERM, request_stop)
-        try:
-            deadline = time.monotonic() + timeout_seconds if timeout_seconds > 0 else None
-            while process.poll() is None:
-                if stop_requested:
-                    stopped_by_user = True
-                    _terminate_process_group(process)
-                    try:
-                        process.wait(timeout=10)
-                    except subprocess.TimeoutExpired:
-                        _kill_process_group(process)
-                        process.wait(timeout=10)
-                    break
-                if deadline is not None and time.monotonic() >= deadline:
-                    timed_out = True
-                    _terminate_process_group(process)
-                    try:
-                        process.wait(timeout=10)
-                    except subprocess.TimeoutExpired:
-                        _kill_process_group(process)
-                        process.wait(timeout=10)
-                    break
-                time.sleep(0.1)
-        except KeyboardInterrupt:
-            stopped_by_user = True
-            _terminate_process_group(process)
+        if process is not None:
+            previous_sigterm = signal.signal(signal.SIGTERM, request_stop)
             try:
-                process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                _kill_process_group(process)
-                process.wait(timeout=10)
-        finally:
-            signal.signal(signal.SIGTERM, previous_sigterm)
+                deadline = time.monotonic() + timeout_seconds if timeout_seconds > 0 else None
+                while process.poll() is None:
+                    if stop_requested:
+                        stopped_by_user = True
+                        _terminate_process_group(process)
+                        try:
+                            process.wait(timeout=10)
+                        except subprocess.TimeoutExpired:
+                            _kill_process_group(process)
+                            process.wait(timeout=10)
+                        break
+                    if deadline is not None and time.monotonic() >= deadline:
+                        timed_out = True
+                        _terminate_process_group(process)
+                        try:
+                            process.wait(timeout=10)
+                        except subprocess.TimeoutExpired:
+                            _kill_process_group(process)
+                            process.wait(timeout=10)
+                        break
+                    time.sleep(0.1)
+            except KeyboardInterrupt:
+                stopped_by_user = True
+                _terminate_process_group(process)
+                try:
+                    process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    _kill_process_group(process)
+                    process.wait(timeout=10)
+            finally:
+                signal.signal(signal.SIGTERM, previous_sigterm)
 
     duration_ms = int((time.monotonic() - start_ts) * 1000)
+    if launch_error is not None:
+        message = f"Failed to start: {launch_error}"
+        _copy_current_to_last(state_dir)
+        _write_status(
+            state_dir,
+            {
+                "status": "failed",
+                "message": message,
+                "exitCode": 2,
+                "startedAt": started_at,
+                "finishedAt": _utc_now(),
+                "durationMs": duration_ms,
+            },
+        )
+        raise launch_error
+
+    assert process is not None
     exit_code = process.returncode if process.returncode is not None else 1
     finished_at = _utc_now()
 

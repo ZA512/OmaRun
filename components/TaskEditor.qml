@@ -25,6 +25,20 @@ Item {
   signal cancelRequested()
   signal deleteRequested()
 
+  function loadValues(values) {
+    nameInput.text = String(values.name || "")
+    commandInput.text = String(values.command || "")
+    argumentsInput.text = String(values.arguments || "")
+    workingDirectoryInput.text = String(values.workingDirectory || "")
+    timeoutInput.text = String(values.timeoutSeconds || 0)
+    root.advancedExpanded = values.advancedExpanded === true
+    root.scheduleEnabled = values.scheduleEnabled === true
+    root.scheduleMode = String(values.scheduleMode || "every-hours")
+    root.scheduleInterval = Number(values.scheduleInterval || 6)
+    root.scheduleTime = String(values.scheduleTime || "03:00")
+    root.scheduleWeekdays = values.scheduleWeekdays || []
+  }
+
   function hasWeekday(day) {
     for (var i = 0; i < root.scheduleWeekdays.length; i++) {
       if (Number(root.scheduleWeekdays[i]) === day) return true
@@ -59,6 +73,7 @@ Item {
       border.color: root.foregroundColor
       color: "transparent"
       TextInput {
+        id: nameInput
         anchors.fill: parent
         anchors.margins: Style.space(6)
         text: root.name
@@ -75,6 +90,7 @@ Item {
       border.color: root.foregroundColor
       color: "transparent"
       TextInput {
+        id: commandInput
         anchors.fill: parent
         anchors.margins: Style.space(6)
         text: root.command
@@ -121,6 +137,7 @@ Item {
         border.color: root.foregroundColor
         color: "transparent"
         TextInput {
+          id: argumentsInput
           anchors.fill: parent
           anchors.margins: Style.space(6)
           text: root.arguments
@@ -137,6 +154,7 @@ Item {
         border.color: root.foregroundColor
         color: "transparent"
         TextInput {
+          id: workingDirectoryInput
           anchors.fill: parent
           anchors.margins: Style.space(6)
           text: root.workingDirectory
@@ -153,6 +171,7 @@ Item {
         border.color: root.foregroundColor
         color: "transparent"
         TextInput {
+          id: timeoutInput
           anchors.fill: parent
           anchors.margins: Style.space(6)
           text: String(root.timeoutSeconds)

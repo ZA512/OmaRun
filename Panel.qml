@@ -405,7 +405,19 @@ Panel {
           return
         }
 
-        if (root.showingEditor || root.selectedTaskId !== "") return
+        if (root.showingEditor) return
+        if (root.selectedTaskId !== "") {
+          if (event.key === Qt.Key_E && root.selectedTask) {
+            event.accepted = true
+            root.openEditEditor(root.selectedTask)
+          }
+          return
+        }
+        if (event.key === Qt.Key_N || event.key === Qt.Key_A) {
+          event.accepted = true
+          root.openAddEditor()
+          return
+        }
         if (!root.tasks || root.tasks.length === 0) return
 
         if (event.key === Qt.Key_Down) {

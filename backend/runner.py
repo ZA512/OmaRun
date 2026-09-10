@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import signal
 import shlex
 import shutil
 import subprocess
@@ -66,6 +67,25 @@ def _copy_current_to_last(state_dir: Path) -> None:
             Path(tmp_path).unlink(missing_ok=True)
 
 
+def _terminate_process_group(process: subprocess.Popen[str]) -> None:
+    """Stop the command and any children it created."""
+    if process.poll() is not None:
+        return
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+
+
+def _kill_process_group(process: subprocess.Popen[str]) -> None:
+    if process.poll() is not None:
+        return
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return
+
+
 def run_task(task_id: str) -> int:
     tasks = load_tasks()
     task = get_task(tasks, task_id)
@@ -95,24 +115,45 @@ def run_task(task_id: str) -> int:
         )
         timed_out = False
         stopped_by_user = False
+        stop_requested = False
+
+        def request_stop(_signum: int, _frame: Any) -> None:
+            nonlocal stop_requested
+            stop_requested = True
+
+        previous_sigterm = signal.signal(signal.SIGTERM, request_stop)
         try:
-            process.wait(timeout=timeout_seconds if timeout_seconds > 0 else None)
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            process.terminate()
-            try:
-                process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=10)
+            deadline = time.monotonic() + timeout_seconds if timeout_seconds > 0 else None
+            while process.poll() is None:
+                if stop_requested:
+                    stopped_by_user = True
+                    _terminate_process_group(process)
+                    try:
+                        process.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        _kill_process_group(process)
+                        process.wait(timeout=10)
+                    break
+                if deadline is not None and time.monotonic() >= deadline:
+                    timed_out = True
+                    _terminate_process_group(process)
+                    try:
+                        process.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        _kill_process_group(process)
+                        process.wait(timeout=10)
+                    break
+                time.sleep(0.1)
         except KeyboardInterrupt:
             stopped_by_user = True
-            process.terminate()
+            _terminate_process_group(process)
             try:
                 process.wait(timeout=10)
             except subprocess.TimeoutExpired:
-                process.kill()
+                _kill_process_group(process)
                 process.wait(timeout=10)
+        finally:
+            signal.signal(signal.SIGTERM, previous_sigterm)
 
     duration_ms = int((time.monotonic() - start_ts) * 1000)
     exit_code = process.returncode if process.returncode is not None else 1
@@ -143,7 +184,8 @@ def run_task(task_id: str) -> int:
             "durationMs": duration_ms,
         },
     )
-    return exit_code
+    # A user-initiated stop is an expected service shutdown, not a failed run.
+    return 0 if stopped_by_user else exit_code
 
 
 def parse_args() -> argparse.Namespace:

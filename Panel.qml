@@ -440,6 +440,7 @@ Panel {
           spacing: Style.space(8)
 
           Text {
+            id: title
             text: "OmaRun"
             color: root.barForeground
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
@@ -447,14 +448,28 @@ Panel {
             font.bold: true
           }
 
-          Item { width: parent.width - 50; height: 1 }
+          Item {
+            width: Math.max(0, parent.width - title.implicitWidth - addTaskButton.width - parent.spacing)
+            height: 1
+          }
 
-          Text {
-            text: "+"
-            color: root.barForeground
-            font.family: root.bar ? root.bar.fontFamily : Style.font.family
-            font.pixelSize: Style.font.subtitle
-            font.bold: true
+          Rectangle {
+            id: addTaskButton
+            width: 68
+            height: 24
+            radius: 4
+            color: "transparent"
+            border.width: 1
+            border.color: root.barForeground
+
+            Text {
+              anchors.centerIn: parent
+              text: "+ Add"
+              color: root.barForeground
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+              font.pixelSize: Style.font.caption
+              font.bold: true
+            }
             opacity: 0.9
             MouseArea {
               anchors.fill: parent
@@ -561,6 +576,27 @@ Panel {
             text: "No commands yet"
             color: root.barForeground
             opacity: 0.8
+          }
+
+          Rectangle {
+            visible: root.tasks.length === 0
+            width: 128
+            height: 28
+            radius: 4
+            color: "transparent"
+            border.width: 1
+            border.color: root.barForeground
+
+            Text {
+              anchors.centerIn: parent
+              text: "+ Add a command"
+              color: root.barForeground
+              font.bold: true
+            }
+            MouseArea {
+              anchors.fill: parent
+              onClicked: root.openAddEditor()
+            }
           }
 
           Repeater {

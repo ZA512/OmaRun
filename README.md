@@ -1,7 +1,32 @@
-# OmaRun (starter)
+# OmaRun
 
-Starter plugin Omarchy `bar-widget` avec panel et backend Python pour piloter des commandes via services/timers `systemd --user`.
+Plugin Omarchy `bar-widget` avec panel et backend Python pour piloter des commandes via services/timers `systemd --user`.
 Le panel appelle directement `backend/omarunctl.py` via `Process` (`list`, `add`, `run`, `stop`, `status`, `log`).
+
+## Installation
+
+Depuis une session Omarchy graphique, installez et activez le plugin avec :
+
+```sh
+omarchy plugin add https://github.com/ZA512/OmaRun.git --enable
+```
+
+La commande clone le dépôt dans `~/.config/omarchy/plugins/io.github.mgirard.omarun`,
+valide son manifeste, puis ajoute le widget à la barre. Omarchy propose son
+emplacement ; choisissez `right` pour le placer à droite.
+
+Après une mise à jour du dépôt, installez la dernière version avec :
+
+```sh
+omarchy plugin update io.github.mgirard.omarun --yes
+```
+
+Pour le désactiver ou le retirer :
+
+```sh
+omarchy plugin disable io.github.mgirard.omarun
+omarchy plugin remove io.github.mgirard.omarun --yes
+```
 
 ## Structure
 

@@ -1,4 +1,5 @@
 import argparse
+import copy
 import json
 import shlex
 import shutil
@@ -61,8 +62,16 @@ def _normalize_schedule(schedule: dict[str, Any] | None) -> dict[str, Any]:
         raise OmaRunError("Invalid schedule mode.")
     if mode in {"every-minutes", "every-hours", "every-days"} and interval <= 0:
         raise OmaRunError("Interval must be greater than 0.")
-    if mode in {"daily-at", "weekly"} and len(at_time) != 5:
-        raise OmaRunError("Time must use HH:MM.")
+    if mode in {"daily-at", "weekly"}:
+        try:
+            time_parts = at_time.split(":")
+            if len(time_parts) != 2 or any(len(part) != 2 for part in time_parts):
+                raise ValueError
+            hour, minute = (int(part) for part in time_parts)
+            if not 0 <= hour <= 23 or not 0 <= minute <= 59:
+                raise ValueError
+        except ValueError as exc:
+            raise OmaRunError("Time must use HH:MM.") from exc
     return {
         "enabled": enabled,
         "mode": mode,
@@ -108,6 +117,8 @@ def _write_service(task: dict[str, Any]) -> None:
             "",
             "[Service]",
             "Type=simple",
+            "KillMode=process",
+            "TimeoutStopSec=15",
             f"ExecStart=/usr/bin/env python3 {shlex.quote(str(runner_path))} --task-id {shlex.quote(task_id)}",
             "",
             "[Install]",
@@ -126,6 +137,7 @@ def _write_or_remove_timer(task: dict[str, Any]) -> None:
         if timer_file.exists():
             _run_systemctl(["disable", "--now", _timer_name(task_id)], check=False)
             timer_file.unlink()
+            _daemon_reload()
         return
 
     lines = _schedule_to_timer_lines(schedule)
@@ -153,6 +165,15 @@ def _sync_systemd(task: dict[str, Any]) -> None:
     _write_service(task)
     _daemon_reload()
     _write_or_remove_timer(task)
+
+
+def _remove_systemd_files(task_id: str) -> None:
+    _run_systemctl(["stop", _service_name(task_id)], check=False)
+    _run_systemctl(["disable", "--now", _timer_name(task_id)], check=False)
+    for path in (_service_path(task_id), _timer_path(task_id)):
+        if path.exists():
+            path.unlink()
+    _daemon_reload()
 
 
 def _read_status(task_id: str) -> dict[str, Any]:
@@ -225,7 +246,13 @@ def cmd_add(args: argparse.Namespace) -> None:
     }
     tasks.append(task)
     save_tasks(tasks)
-    _sync_systemd(task)
+    try:
+        _sync_systemd(task)
+    except Exception:
+        tasks.pop()
+        save_tasks(tasks)
+        _remove_systemd_files(task_id)
+        raise
     print(json.dumps(task, ensure_ascii=False, indent=2))
 
 
@@ -233,6 +260,7 @@ def cmd_update(args: argparse.Namespace) -> None:
     tasks = load_tasks()
     validate_task_id(args.id)
     task = get_task(tasks, args.id)
+    original_task = copy.deepcopy(task)
     if args.name is not None:
         task["name"] = args.name
     if args.command is not None:
@@ -248,7 +276,14 @@ def cmd_update(args: argparse.Namespace) -> None:
     if args.schedule is not None:
         task["schedule"] = _normalize_schedule(json.loads(args.schedule))
     save_tasks(tasks)
-    _sync_systemd(task)
+    try:
+        _sync_systemd(task)
+    except Exception:
+        task.clear()
+        task.update(original_task)
+        save_tasks(tasks)
+        _sync_systemd(task)
+        raise
     print(json.dumps(task, ensure_ascii=False, indent=2))
 
 
@@ -258,16 +293,7 @@ def cmd_delete(args: argparse.Namespace) -> None:
     task = get_task(tasks, args.id)
     task_id = task["id"]
 
-    _run_systemctl(["stop", _service_name(task_id)], check=False)
-    _run_systemctl(["disable", "--now", _timer_name(task_id)], check=False)
-
-    service_file = _service_path(task_id)
-    timer_file = _timer_path(task_id)
-    if service_file.exists():
-        service_file.unlink()
-    if timer_file.exists():
-        timer_file.unlink()
-    _daemon_reload()
+    _remove_systemd_files(task_id)
 
     tasks = [t for t in tasks if t["id"] != task_id]
     save_tasks(tasks)

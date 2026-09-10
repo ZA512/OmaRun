@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.mgirard.omarun",
+  "name": "OmaRun",
+  "version": "0.1.0",
+  "author": "m.girard",
+  "license": "MIT",
+  "description": "Minimal command launcher and scheduler for Omarchy.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "OmaRun",
+    "category": "Utilities",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

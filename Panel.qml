@@ -372,8 +372,11 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: keyCatcher
-    contentWidth: panel.fittedContentWidth(Style.space(340))
-    contentHeight: panel.fittedContentHeight(Math.max(content.implicitHeight, Style.space(110)))
+    contentWidth: panel.fittedContentWidth(Style.space(480))
+    contentHeight: panel.fittedContentHeight(
+      root.showingEditor ? Style.space(560)
+      : root.selectedTaskId !== "" ? Style.space(420)
+      : Math.max(Style.space(150), Math.min(Style.space(500), content.implicitHeight)))
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -464,7 +467,7 @@ Panel {
             id: addTaskButton
             width: Style.space(56)
             height: Style.space(24)
-            x: Style.space(250)
+            x: Math.max(0, parent.width - width)
             y: Math.max(0, (parent.height - height) / 2)
             text: "+ Add"
             color: root.barForeground
@@ -559,6 +562,10 @@ Panel {
           foregroundColor: root.barForeground
           taskId: root.selectedTask ? String(root.selectedTask.id || "") : ""
           name: root.selectedTask ? String(root.selectedTask.name || "") : ""
+          commandText: root.selectedTask
+            ? String(root.selectedTask.command || "")
+              + (String(root.selectedTask.arguments || "") !== "" ? " " + String(root.selectedTask.arguments) : "")
+            : ""
           running: root.selectedTask ? root.selectedTask.running === true : false
           statusText: root.detailsStatusText
           nextRunText: root.detailsNextRunText

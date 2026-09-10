@@ -1,13 +1,16 @@
 import QtQuick
 import qs.Commons
+import qs.Ui
 
 Item {
   id: root
   implicitHeight: detailsContent.implicitHeight
   height: visible ? implicitHeight : 0
+
   property color foregroundColor: "white"
   property string taskId: ""
   property string name: ""
+  property string commandText: ""
   property string statusText: ""
   property string logText: ""
   property string nextRunText: ""
@@ -22,79 +25,146 @@ Item {
   Column {
     id: detailsContent
     width: parent.width
-    spacing: Style.space(8)
+    spacing: Style.space(12)
 
-    Row {
-      spacing: Style.space(8)
-      Text { text: "←"; color: root.foregroundColor; font.bold: true }
-      Text { text: root.name; color: root.foregroundColor; font.bold: true }
-
-      TapHandler {
-        onTapped: root.backRequested()
-      }
-    }
-
-    Text { text: root.statusText; color: root.foregroundColor; wrapMode: Text.Wrap }
-    Text { text: root.nextRunText; color: root.foregroundColor; visible: root.nextRunText !== "" }
-
-    Row {
-      spacing: Style.space(8)
-      Rectangle {
-        width: 64
-        height: 24
-        border.width: 1
-        border.color: root.foregroundColor
-        radius: 4
-        color: "transparent"
-
-        Text {
-          anchors.centerIn: parent
-          text: root.running ? "Stop" : "Run"
-          color: root.foregroundColor
-        }
-        MouseArea {
-          anchors.fill: parent
-          onClicked: {
-            if (root.running) root.stopRequested()
-            else root.runRequested()
-          }
-        }
-      }
-
-      Rectangle {
-        width: 56
-        height: 24
-        border.width: 1
-        border.color: root.foregroundColor
-        radius: 4
-        color: "transparent"
-        Text { anchors.centerIn: parent; text: "Edit"; color: root.foregroundColor }
-        MouseArea {
-          anchors.fill: parent
-          onClicked: root.editRequested()
-        }
-      }
-
-      Rectangle {
-        width: 64
-        height: 24
-        border.width: 1
-        border.color: root.foregroundColor
-        radius: 4
-        color: "transparent"
-        Text { anchors.centerIn: parent; text: "Delete"; color: root.foregroundColor }
-        MouseArea {
-          anchors.fill: parent
-          onClicked: root.deleteRequested()
-        }
-      }
-    }
-
-    Text {
-      text: root.logText
-      color: root.foregroundColor
-      wrapMode: Text.WrapAnywhere
+    Item {
       width: parent.width
+      height: Style.space(30)
+
+      Button {
+        width: Style.space(32)
+        height: Style.space(28)
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        text: "←"
+        foreground: root.foregroundColor
+        horizontalPadding: 0
+        verticalPadding: 0
+        onClicked: root.backRequested()
+      }
+
+      Text {
+        anchors.left: parent.left
+        anchors.leftMargin: Style.space(42)
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.name
+        color: root.foregroundColor
+        font.family: Style.font.family
+        font.pixelSize: Style.font.subtitle
+        font.bold: true
+        elide: Text.ElideRight
+      }
+    }
+
+    Row {
+      width: parent.width
+      height: Style.space(30)
+      spacing: Style.space(8)
+
+      Button {
+        width: Style.space(74)
+        height: parent.height
+        text: root.running ? "Stop" : "Run"
+        iconText: root.running ? "■" : "▶"
+        bordered: true
+        foreground: root.foregroundColor
+        onClicked: root.running ? root.stopRequested() : root.runRequested()
+      }
+
+      Button {
+        width: Style.space(74)
+        height: parent.height
+        text: "Edit"
+        bordered: true
+        foreground: root.foregroundColor
+        onClicked: root.editRequested()
+      }
+
+      Button {
+        width: Style.space(86)
+        height: parent.height
+        text: "Delete"
+        foreground: root.foregroundColor
+        onClicked: root.deleteRequested()
+      }
+    }
+
+    Column {
+      width: parent.width
+      height: implicitHeight
+      spacing: Style.space(4)
+
+      Text {
+        text: "Status"
+        color: root.foregroundColor
+        font.family: Style.font.family
+        font.pixelSize: Style.font.caption
+        font.bold: true
+        opacity: 0.7
+      }
+      Text {
+        width: parent.width
+        text: root.statusText || "Never executed"
+        color: root.foregroundColor
+        font.family: Style.font.family
+        wrapMode: Text.WordWrap
+      }
+      Text {
+        visible: root.nextRunText !== ""
+        width: parent.width
+        text: root.nextRunText
+        color: root.foregroundColor
+        font.family: Style.font.family
+        wrapMode: Text.WordWrap
+        opacity: 0.8
+      }
+    }
+
+    Column {
+      width: parent.width
+      height: implicitHeight
+      spacing: Style.space(4)
+
+      Text {
+        text: "Command"
+        color: root.foregroundColor
+        font.family: Style.font.family
+        font.pixelSize: Style.font.caption
+        font.bold: true
+        opacity: 0.7
+      }
+      Text {
+        width: parent.width
+        text: root.commandText
+        color: root.foregroundColor
+        font.family: Style.font.family
+        wrapMode: Text.WrapAnywhere
+      }
+    }
+
+    Column {
+      visible: root.logText !== ""
+      width: parent.width
+      height: visible ? implicitHeight : 0
+      spacing: Style.space(4)
+
+      Text {
+        text: "Last output"
+        color: root.foregroundColor
+        font.family: Style.font.family
+        font.pixelSize: Style.font.caption
+        font.bold: true
+        opacity: 0.7
+      }
+      Text {
+        width: parent.width
+        text: root.logText
+        color: root.foregroundColor
+        font.family: Style.font.family
+        wrapMode: Text.WrapAnywhere
+        opacity: 0.85
+      }
     }
   }
 }

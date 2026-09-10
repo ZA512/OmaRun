@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Ui
 
 Item {
   id: root
@@ -66,7 +67,7 @@ Item {
       }
     }
 
-    Text { text: "Command"; color: root.foregroundColor }
+    Text { text: "Script or command"; color: root.foregroundColor }
     Rectangle {
       width: parent.width
       height: Style.space(28)
@@ -171,7 +172,11 @@ Item {
       width: parent.width
 
       Text { text: "Mode"; color: root.foregroundColor }
-      Row {
+      Grid {
+        id: scheduleModeGrid
+        width: parent.width
+        height: implicitHeight
+        columns: 2
         spacing: Style.space(6)
         Repeater {
           model: [
@@ -181,22 +186,22 @@ Item {
             "daily-at",
             "weekly"
           ]
-          delegate: Rectangle {
-            width: 94
-            height: 22
-            border.width: root.scheduleMode === modelData ? 2 : 1
-            border.color: root.foregroundColor
-            color: "transparent"
-            Text {
-              anchors.centerIn: parent
-              text: String(modelData).replace("every-", "Every ").replace("-at", " at")
-              color: root.foregroundColor
-              font.pixelSize: 11
+          delegate: Button {
+            required property var modelData
+            width: (scheduleModeGrid.width - scheduleModeGrid.spacing) / 2
+            height: Style.space(30)
+            text: {
+              if (modelData === "every-minutes") return "Every N minutes"
+              if (modelData === "every-hours") return "Every N hours"
+              if (modelData === "every-days") return "Every N days"
+              if (modelData === "daily-at") return "Daily at time"
+              return "Selected weekdays"
             }
-            MouseArea {
-              anchors.fill: parent
-              onClicked: root.scheduleMode = modelData
-            }
+            bordered: true
+            selected: root.scheduleMode === modelData
+            foreground: root.foregroundColor
+            fontSize: Style.font.caption
+            onClicked: root.scheduleMode = modelData
           }
         }
       }

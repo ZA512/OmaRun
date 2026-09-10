@@ -15,6 +15,7 @@ Item {
   property string logText: ""
   property string nextRunText: ""
   property bool running: false
+  property bool inlineMode: false
 
   signal backRequested()
   signal runRequested()
@@ -28,8 +29,9 @@ Item {
     spacing: Style.space(12)
 
     Item {
+      visible: !root.inlineMode
       width: parent.width
-      height: Style.space(30)
+      height: visible ? Style.space(30) : 0
 
       Button {
         width: Style.space(32)
@@ -63,6 +65,7 @@ Item {
       spacing: Style.space(8)
 
       Button {
+        visible: !root.inlineMode
         width: Style.space(74)
         height: parent.height
         text: root.running ? "Stop" : "Run"
@@ -150,7 +153,7 @@ Item {
       spacing: Style.space(4)
 
       Text {
-        text: "Last output"
+        text: root.running ? "Live output" : "Last output"
         color: root.foregroundColor
         font.family: Style.font.family
         font.pixelSize: Style.font.caption

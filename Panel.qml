@@ -113,6 +113,17 @@ Panel {
     refreshLog(taskId)
   }
 
+  function toggleDetails(taskId) {
+    if (selectedTaskId === taskId) {
+      selectedTaskId = ""
+      detailsStatusText = ""
+      detailsLogText = ""
+      detailsNextRunText = ""
+      return
+    }
+    openDetails(taskId)
+  }
+
   function openAddEditor() {
     editingTask = false
     showingEditor = true
@@ -153,13 +164,15 @@ Panel {
   }
 
   function refreshStatus(taskId) {
-    if (statusProc.running) statusProc.running = false
+    if (statusProc.running) return
+    statusProc.taskId = taskId
     statusProc.command = ["python3", backendScriptPath(), "status", "--id", taskId]
     statusProc.running = true
   }
 
   function refreshLog(taskId) {
-    if (logProc.running) logProc.running = false
+    if (logProc.running) return
+    logProc.taskId = taskId
     logProc.command = ["python3", backendScriptPath(), "log", "--id", taskId]
     logProc.running = true
   }
@@ -328,11 +341,19 @@ Panel {
 
   Process {
     id: statusProc
+    property string taskId: ""
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        if (statusProc.taskId !== root.selectedTaskId) return
         var data = root.parseJson(text)
-        if (!data || !data.lastStatus) return
+        if (!data) return
+        if (data.running === true) {
+          root.detailsStatusText = "running"
+          root.detailsNextRunText = data.nextRun ? "Next run: " + String(data.nextRun) : ""
+          return
+        }
+        if (!data.lastStatus) return
         var s = data.lastStatus
         var summary = String(s.status || "never")
         if (s.message) summary = summary + " · " + String(s.message)
@@ -351,9 +372,11 @@ Panel {
 
   Process {
     id: logProc
+    property string taskId: ""
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        if (logProc.taskId !== root.selectedTaskId) return
         var data = root.parseJson(text)
         if (!data) return
         root.detailsLogText = String(data.text || "")
@@ -365,6 +388,17 @@ Panel {
     }
   }
 
+  Timer {
+    interval: 1000
+    repeat: true
+    running: root.opened && !root.showingEditor && root.selectedTaskId !== ""
+    onTriggered: {
+      root.refreshTasks()
+      root.refreshStatus(root.selectedTaskId)
+      root.refreshLog(root.selectedTaskId)
+    }
+  }
+
   KeyboardPanel {
     id: panel
     anchorItem: root.anchorItem
@@ -372,10 +406,10 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: keyCatcher
-    contentWidth: panel.fittedContentWidth(Style.space(480))
+    contentWidth: panel.fittedContentWidth(Style.space(620))
     contentHeight: panel.fittedContentHeight(
-      root.showingEditor ? Style.space(560)
-      : root.selectedTaskId !== "" ? Style.space(420)
+      root.showingEditor ? Style.space(650)
+      : root.selectedTaskId !== "" ? Style.space(650)
       : Math.max(Style.space(150), Math.min(Style.space(500), content.implicitHeight)))
 
     PanelKeyCatcher {
@@ -568,32 +602,8 @@ Panel {
           }
         }
 
-        Components.TaskDetails {
-          visible: !root.showingEditor && root.selectedTaskId !== "" && root.selectedTask
-          width: parent.width
-          foregroundColor: root.barForeground
-          taskId: root.selectedTask ? String(root.selectedTask.id || "") : ""
-          name: root.selectedTask ? String(root.selectedTask.name || "") : ""
-          commandText: root.selectedTask
-            ? String(root.selectedTask.command || "")
-              + (String(root.selectedTask.arguments || "") !== "" ? " " + String(root.selectedTask.arguments) : "")
-            : ""
-          running: root.selectedTask ? root.selectedTask.running === true : false
-          statusText: root.detailsStatusText
-          nextRunText: root.detailsNextRunText
-          logText: root.detailsLogText
-          onBackRequested: root.selectedTaskId = ""
-          onRunRequested: if (root.selectedTask) root.runAction("run", root.selectedTask.id)
-          onStopRequested: if (root.selectedTask) root.runAction("stop", root.selectedTask.id)
-          onEditRequested: root.openEditEditor(root.selectedTask)
-          onDeleteRequested: {
-            root.openEditEditor(root.selectedTask)
-            root.confirmingDelete = true
-          }
-        }
-
         Column {
-          visible: !root.showingEditor && root.selectedTaskId === ""
+          visible: !root.showingEditor
           width: parent.width
           height: visible ? implicitHeight : 0
           spacing: 4
@@ -625,21 +635,60 @@ Panel {
 
           Repeater {
             model: root.tasks
-            delegate: Components.TaskRow {
+            delegate: Column {
+              id: taskDelegate
+              required property var modelData
+              required property int index
               width: parent.width
-              foregroundColor: root.barForeground
-              taskId: String(modelData.id || "")
-              name: String(modelData.name || "")
-              status: String((modelData.lastStatus && modelData.lastStatus.status) || "never")
-              secondaryText: root.statusSummary(modelData)
-              scheduled: modelData.schedule && modelData.schedule.enabled === true
-              running: modelData.running === true
-              selected: index === root.selectedListIndex
-              onRunRequested: function(taskId) { root.runAction("run", taskId) }
-              onStopRequested: function(taskId) { root.runAction("stop", taskId) }
-              onOpenDetailsRequested: function(taskId) {
-                root.selectedListIndex = index
-                root.openDetails(taskId)
+              height: implicitHeight
+              spacing: expanded ? Style.space(10) : 0
+              readonly property bool expanded: String(modelData.id || "") === root.selectedTaskId
+
+              Components.TaskRow {
+                width: parent.width
+                foregroundColor: root.barForeground
+                taskId: String(taskDelegate.modelData.id || "")
+                name: String(taskDelegate.modelData.name || "")
+                status: String((taskDelegate.modelData.lastStatus && taskDelegate.modelData.lastStatus.status) || "never")
+                secondaryText: root.statusSummary(taskDelegate.modelData)
+                scheduled: taskDelegate.modelData.schedule && taskDelegate.modelData.schedule.enabled === true
+                running: taskDelegate.modelData.running === true
+                selected: taskDelegate.index === root.selectedListIndex
+                expanded: taskDelegate.expanded
+                onRunRequested: function(taskId) {
+                  root.selectedListIndex = taskDelegate.index
+                  root.openDetails(taskId)
+                  root.runAction("run", taskId)
+                }
+                onStopRequested: function(taskId) {
+                  root.selectedListIndex = taskDelegate.index
+                  root.openDetails(taskId)
+                  root.runAction("stop", taskId)
+                }
+                onOpenDetailsRequested: function(taskId) {
+                  root.selectedListIndex = taskDelegate.index
+                  root.toggleDetails(taskId)
+                }
+              }
+
+              Components.TaskDetails {
+                visible: taskDelegate.expanded
+                width: parent.width
+                inlineMode: true
+                foregroundColor: root.barForeground
+                taskId: String(taskDelegate.modelData.id || "")
+                name: String(taskDelegate.modelData.name || "")
+                commandText: String(taskDelegate.modelData.command || "")
+                  + (String(taskDelegate.modelData.arguments || "") !== "" ? " " + String(taskDelegate.modelData.arguments) : "")
+                running: taskDelegate.modelData.running === true
+                statusText: root.detailsStatusText
+                nextRunText: root.detailsNextRunText
+                logText: root.detailsLogText
+                onEditRequested: root.openEditEditor(taskDelegate.modelData)
+                onDeleteRequested: {
+                  root.openEditEditor(taskDelegate.modelData)
+                  root.confirmingDelete = true
+                }
               }
             }
           }

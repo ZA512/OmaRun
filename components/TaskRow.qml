@@ -11,6 +11,7 @@ Item {
   property bool scheduled: false
   property bool running: false
   property bool selected: false
+  property bool expanded: false
 
   signal runRequested(string taskId)
   signal stopRequested(string taskId)
@@ -30,13 +31,18 @@ Item {
     anchors.fill: parent
     spacing: Style.space(8)
 
-    Text { text: root.selected ? "›" : " "; color: root.foregroundColor; width: 8 }
+    Text {
+      text: root.expanded ? "▾" : "▸"
+      color: root.foregroundColor
+      width: Style.space(12)
+      horizontalAlignment: Text.AlignHCenter
+    }
 
     Text {
       text: root.running ? "◉" : (root.status === "success" ? "●" : (root.status === "failed" ? "✕" : "○"))
       color: root.foregroundColor
     }
-    Text { text: root.name; color: root.foregroundColor; elide: Text.ElideRight; width: 210 }
+    Text { text: root.name; color: root.foregroundColor; elide: Text.ElideRight; width: Style.space(270) }
     Text {
       text: root.secondaryText
       color: root.foregroundColor

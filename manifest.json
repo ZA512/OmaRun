@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "io.github.mgirard.omarun",
+  "id": "io.github.za512.omarun",
   "name": "OmaRun",
   "version": "0.1.0",
-  "author": "m.girard",
+  "author": "za512",
   "license": "MIT",
   "description": "Minimal command launcher and scheduler for Omarchy.",
   "kinds": ["bar-widget"],

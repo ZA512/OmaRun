@@ -1,82 +1,203 @@
 # OmaRun
 
-Plugin Omarchy `bar-widget` avec panel et backend Python pour piloter des commandes via services/timers `systemd --user`.
-Le panel appelle directement `backend/omarunctl.py` via `Process` (`list`, `add`, `run`, `stop`, `status`, `log`).
+Run scripts from the Omarchy bar — on demand or on a schedule — and inspect their latest output without opening a terminal.
 
-## Installation
+![OmaRun overview](preview.png)
 
-Depuis une session Omarchy graphique, installez et activez le plugin avec :
+OmaRun is a lightweight, theme-aware bar widget for Omarchy Quattro. It keeps the interface intentionally small while using native `systemd --user` services and timers underneath.
+
+## Features
+
+- Save, edit, run, stop, and delete personal commands.
+- Schedule commands every N minutes, hours, or days, at a daily time, or on selected weekdays.
+- See running, successful, failed, stopped, and timed-out states at a glance.
+- Follow the current output while a command is running and inspect the last output afterward.
+- Configure arguments, a working directory, environment variables through the CLI, and an optional timeout.
+- Prevent overlapping runs of the same task.
+- Match the active Omarchy theme and font automatically.
+- Run entirely as the current user: no root service, `sudo`, cron daemon, or external Python package is required.
+
+## Screenshots
+
+| Task list | Run details and output |
+| --- | --- |
+| <img src="screenshot/list.png" alt="OmaRun task list" width="100%"> | <img src="screenshot/watch-log.png" alt="OmaRun output viewer" width="100%"> |
+
+| Scheduling | Advanced options |
+| --- | --- |
+| <img src="screenshot/edit-schedule.png" alt="OmaRun schedule editor" width="100%"> | <img src="screenshot/edit-advanced.png" alt="OmaRun advanced command options" width="100%"> |
+
+| Safe deletion |
+| --- |
+| <img src="screenshot/delete.png" alt="OmaRun delete confirmation" width="50%"> |
+
+## Requirements
+
+- Omarchy 4 (Quattro) or newer.
+- A working per-user systemd manager, provided by a normal Omarchy installation.
+- Python 3. OmaRun uses only the Python standard library.
+
+## Install
 
 ```sh
 omarchy plugin add https://github.com/ZA512/OmaRun.git --enable
 ```
 
-La commande clone le dépôt dans `~/.config/omarchy/plugins/io.github.mgirard.omarun`,
-valide son manifeste, puis ajoute le widget à la barre. Omarchy propose son
-emplacement ; choisissez `right` pour le placer à droite.
+The widget defaults to the right section of the bar. Move it at any time with:
 
-Après une mise à jour du dépôt, installez la dernière version avec :
+```sh
+omarchy bar move io.github.mgirard.omarun --section right
+```
+
+## Usage
+
+1. Open OmaRun from the `>_` widget in the bar.
+2. Select **Add**, give the task a name, and enter a command such as:
+
+   ```text
+   python3 /home/you/scripts/backup.py
+   ```
+
+3. Optionally enable automatic execution and select a schedule.
+4. Save the task, then use **Run** whenever you want an immediate execution.
+5. Expand the task to inspect its status, command, and current or latest output.
+
+The **Advanced** section lets you provide separate arguments, a working directory, and a timeout. A timeout of `0` means no timeout.
+
+### Keyboard controls
+
+When the task list has focus:
+
+| Key | Action |
+| --- | --- |
+| `↑` / `↓` | Select a task |
+| `Enter` | Expand or open the selected task |
+| `Space` | Run or stop the selected task |
+| `N` or `A` | Add a task |
+| `E` | Edit the expanded task |
+| `Escape` | Go back, cancel a confirmation, or close the panel |
+
+## Scheduling: systemd, not cron
+
+OmaRun never writes to a crontab. Every saved task gets a user service, and an optional schedule gets a matching user timer:
+
+```text
+OmaRun QML panel
+      │
+      ▼
+backend/omarunctl.py
+      │
+      ├── ~/.config/systemd/user/omarun-<task-id>.service
+      │                         ▲
+      └── optional .timer ──────┘
+                │
+                ▼
+         backend/runner.py
+                │
+                ├── current.log / last.log
+                └── status.json
+```
+
+Manual and scheduled runs activate the same `.service`, so they share the same execution, timeout, status, and logging behavior. The timer is only the trigger.
+
+The schedule presets translate to these systemd timer concepts:
+
+| OmaRun schedule | systemd timer |
+| --- | --- |
+| Every N minutes/hours/days | `OnActiveSec=` + `OnUnitActiveSec=` |
+| Daily at a time | `OnCalendar=` |
+| Selected weekdays at a time | `OnCalendar=` |
+
+Calendar timers use `Persistent=true`. If the user manager was not running when a calendar event was due, systemd can perform one catch-up activation when the timer becomes active again. This is similar to simple anacron behavior, but it is not a replay of every missed occurrence.
+
+For interval schedules, `OnActiveSec=` establishes the first run relative to the moment the timer is enabled. `OnUnitActiveSec=` then schedules subsequent runs relative to the previous service activation. No manual bootstrap run is required.
+
+Why use systemd timers here?
+
+- The schedule and the process lifecycle are managed by the same user service manager.
+- A task can be started and stopped cleanly with `systemctl --user`.
+- systemd prevents the timer from starting another copy while its service is already active.
+- Calendar schedules understand the system clock and timezone.
+- The task continues independently of whether the OmaRun panel is open.
+
+For diagnostics, you can inspect generated units with:
+
+```sh
+systemctl --user list-timers 'omarun-*' --all
+systemctl --user list-units 'omarun-*' --all
+```
+
+See [`systemd.timer(5)`](https://man.archlinux.org/man/systemd.timer.5.en) for the timer semantics used by OmaRun.
+
+## Current limitations
+
+OmaRun is designed as a small personal script runner, not a complete cron replacement or a general systemd administration interface.
+
+- **Schedules belong to the user session.** The per-user systemd manager normally starts at login and may stop after logout unless lingering is configured for the account.
+- **It does not wake a suspended or powered-off computer.** Calendar timers can catch up once after the user manager returns, but monotonic interval timers pause during suspend and do not replay missed intervals.
+- **Timer precision is systemd's default.** OmaRun does not override `AccuracySec=`, whose systemd default permits coalescing timer events within a one-minute window.
+- **Only the current and most recent output are kept.** Standard output and standard error are merged in order. There is no run-history browser, log rotation, or output-size limit yet.
+- **Commands are not interpreted by a shell.** OmaRun builds an argument vector with `shlex` and starts it directly. Pipes, redirects, `&&`, glob expansion, and shell variables therefore have no implicit meaning. When shell syntax is intentional, invoke a shell explicitly, for example with command `bash -lc` and a quoted expression in **Arguments**.
+- **Scheduling is preset-based.** Complex calendar expressions, monthly schedules, dependencies between tasks, retries, and notifications are not available yet.
+- **One instance per task.** A second run is rejected while the same task is already active.
+
+## Files and data
+
+OmaRun stores only local files:
+
+```text
+~/.config/omarun/tasks.json
+~/.local/state/omarun/tasks/<task-id>/status.json
+~/.local/state/omarun/tasks/<task-id>/current.log
+~/.local/state/omarun/tasks/<task-id>/last.log
+~/.config/systemd/user/omarun-<task-id>.service
+~/.config/systemd/user/omarun-<task-id>.timer
+```
+
+Deleting a task from OmaRun stops its service, disables its timer, removes the generated units, and deletes that task's OmaRun status and logs. It never deletes the script or executable referenced by the task.
+
+## Security model
+
+Omarchy plugins run unsandboxed with your user permissions. OmaRun does not request elevation and never adds `sudo` automatically, but every command you save has the same access to your files and session as if you launched it yourself.
+
+Review scripts before adding them. OmaRun itself makes no remote requests and executes commands without an implicit shell, which avoids accidental shell expansion but is not a security boundary.
+
+## Update
 
 ```sh
 omarchy plugin update io.github.mgirard.omarun --yes
 ```
 
-Pour le désactiver ou le retirer :
+## Remove
+
+Before removing the plugin, delete its tasks from the OmaRun interface. This cleanly stops their services and removes their timers and generated unit files. Your actual script files are left untouched.
+
+Then remove the plugin:
 
 ```sh
-omarchy plugin disable io.github.mgirard.omarun
 omarchy plugin remove io.github.mgirard.omarun --yes
 ```
 
-## Structure
+The empty `~/.config/omarun/` directory may remain so a later installation can reuse it.
 
-- `manifest.json`
-- `BarWidget.qml`
-- `Panel.qml`
-- `components/`
-- `backend/omarunctl.py`
-- `backend/runner.py`
+## Development
 
-## Validation locale
+Validate the plugin manifest and run the backend integration tests:
 
 ```sh
-omarchy plugin validate ~/.config/omarchy/plugins/io.github.mgirard.omarun
+omarchy plugin validate .
+python3 -m unittest discover -s tests -v
+```
+
+If `qmllint` is installed:
+
+```sh
 qmllint -I "$OMARCHY_PATH/shell" \
-  ~/.config/omarchy/plugins/io.github.mgirard.omarun/BarWidget.qml \
-  ~/.config/omarchy/plugins/io.github.mgirard.omarun/Panel.qml
+  BarWidget.qml \
+  Panel.qml \
+  components/*.qml
 ```
 
-## Backend CLI
+## License
 
-```sh
-python3 backend/omarunctl.py list
-python3 backend/omarunctl.py add --name "Sync séries" --command "python3 /home/user/scripts/sync.py"
-python3 backend/omarunctl.py run --id task-xxxxxxxxxxxx
-python3 backend/omarunctl.py status --id task-xxxxxxxxxxxx
-python3 backend/omarunctl.py update --id task-xxxxxxxxxxxx --name "Sync séries" --command "python3 /home/user/scripts/sync.py"
-python3 backend/omarunctl.py log --id task-xxxxxxxxxxxx
-python3 backend/omarunctl.py stop --id task-xxxxxxxxxxxx
-python3 backend/omarunctl.py delete --id task-xxxxxxxxxxxx
-```
-
-Options utiles:
-
-- `--arguments`
-- `--working-directory`
-- `--timeout-seconds`
-- `--env '{"FOO":"bar"}'`
-- `--schedule '{"enabled":true,"mode":"every-hours","interval":6}'`
-
-Modes de schedule V1:
-
-- `every-minutes`
-- `every-hours`
-- `every-days`
-- `daily-at` (`time: "HH:MM"`)
-- `weekly` (`weekdays: [0..6]`, 0 = lundi)
-
-## Sécurité
-
-- exécution sans shell intermédiaire (`shell=False`);
-- aucune élévation de privilèges;
-- aucune commande distante implicite.
+[MIT](LICENSE)

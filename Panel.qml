@@ -17,6 +17,7 @@ Panel {
   property bool showingEditor: false
   property bool editingTask: false
   property bool confirmingDelete: false
+  property bool returnToEditorAfterDeleteCancel: false
   property int selectedListIndex: -1
   property string editorName: ""
   property string editorCommand: ""
@@ -131,6 +132,7 @@ Panel {
     editingTask = false
     showingEditor = true
     confirmingDelete = false
+    returnToEditorAfterDeleteCancel = false
     selectedTaskId = ""
     errorText = ""
     editorName = ""
@@ -164,6 +166,7 @@ Panel {
     editingTask = true
     showingEditor = true
     confirmingDelete = false
+    returnToEditorAfterDeleteCancel = false
     errorText = ""
     editorName = String(task.name || "")
     editorCommand = String(task.command || "")
@@ -190,6 +193,22 @@ Panel {
       "scheduleTime": root.editorScheduleTime,
       "scheduleWeekdays": root.editorScheduleWeekdays
     })
+  }
+
+  function requestDelete(task, returnToEditor) {
+    if (!task) return
+    if (!root.showingEditor || !root.editingTask) root.openEditEditor(task)
+    root.returnToEditorAfterDeleteCancel = returnToEditor === true
+    root.confirmingDelete = true
+  }
+
+  function cancelDeleteConfirmation() {
+    root.confirmingDelete = false
+    if (!root.returnToEditorAfterDeleteCancel) {
+      root.showingEditor = false
+      root.editingTask = false
+    }
+    root.returnToEditorAfterDeleteCancel = false
   }
 
   function refreshStatus(taskId) {
@@ -362,6 +381,7 @@ Panel {
       root.showingEditor = false
       root.editingTask = false
       root.confirmingDelete = false
+      root.returnToEditorAfterDeleteCancel = false
       root.selectedTaskId = ""
       root.errorText = ""
       root.refreshTasks()
@@ -451,7 +471,7 @@ Panel {
         if (event.key === Qt.Key_Escape) {
           event.accepted = true
           if (root.confirmingDelete) {
-            root.confirmingDelete = false
+            root.cancelDeleteConfirmation()
             return
           }
           if (root.showingEditor) {
@@ -572,7 +592,7 @@ Panel {
 
         Components.TaskEditor {
           id: taskEditor
-          visible: root.showingEditor
+          visible: root.showingEditor && !root.confirmingDelete
           width: parent.width
           foregroundColor: root.barForeground
           mode: root.editingTask ? "edit" : "add"
@@ -603,32 +623,72 @@ Panel {
             root.showingEditor = false
             root.editingTask = false
             root.confirmingDelete = false
+            root.returnToEditorAfterDeleteCancel = false
             root.errorText = ""
           }
-          onDeleteRequested: root.confirmingDelete = true
+          onDeleteRequested: root.requestDelete(root.selectedTask, true)
           onSaveRequested: {
             if (root.editingTask) root.updateTask()
             else root.addTask()
           }
         }
 
-        Column {
+        Rectangle {
           visible: root.showingEditor && root.editingTask && root.confirmingDelete
           width: parent.width
+          implicitHeight: deleteConfirmationContent.implicitHeight + Style.space(24)
           height: visible ? implicitHeight : 0
-          spacing: 6
-          Text { text: "Delete this task? Script source file will not be deleted."; wrapMode: Text.WordWrap }
-          Row {
-            spacing: 8
-            Rectangle {
-              width: 64; height: 24; border.width: 1; radius: 4; color: "transparent"
-              Text { anchors.centerIn: parent; text: "Cancel" }
-              MouseArea { anchors.fill: parent; onClicked: root.confirmingDelete = false }
+          radius: Style.cornerRadius
+          color: Style.normalFillFor(root.barForeground, Color.accent, Color.urgent)
+          border.width: Math.max(1, Style.normalBorderWidth)
+          border.color: Color.urgent
+
+          Column {
+            id: deleteConfirmationContent
+            x: Style.space(12)
+            y: Style.space(12)
+            width: Math.max(1, parent.width - Style.space(24))
+            spacing: Style.space(10)
+
+            Text {
+              width: parent.width
+              text: "Delete \u201c" + String(root.selectedTask ? root.selectedTask.name : "this task") + "\u201d?"
+              color: root.barForeground
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+              font.pixelSize: Style.font.subtitle
+              font.bold: true
+              wrapMode: Text.WordWrap
             }
-            Rectangle {
-              width: 64; height: 24; border.width: 1; radius: 4; color: "transparent"
-              Text { anchors.centerIn: parent; text: "Delete" }
-              MouseArea { anchors.fill: parent; onClicked: root.deleteTask() }
+
+            Text {
+              width: parent.width
+              text: "The saved command, schedule, and run history will be removed. The script file itself will not be deleted."
+              color: root.barForeground
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+              font.pixelSize: Style.font.bodySmall
+              wrapMode: Text.WordWrap
+              opacity: 0.72
+            }
+
+            Row {
+              spacing: Style.space(8)
+
+              Button {
+                height: Style.spacing.controlHeight
+                text: "Cancel"
+                bordered: true
+                foreground: root.barForeground
+                onClicked: root.cancelDeleteConfirmation()
+              }
+
+              Button {
+                height: Style.spacing.controlHeight
+                text: "Delete task"
+                iconText: "\u2715"
+                bordered: true
+                foreground: Color.urgent
+                onClicked: root.deleteTask()
+              }
             }
           }
         }
@@ -712,14 +772,12 @@ Panel {
                 commandText: String(taskDelegate.modelData.command || "")
                   + (String(taskDelegate.modelData.arguments || "") !== "" ? " " + String(taskDelegate.modelData.arguments) : "")
                 running: taskDelegate.modelData.running === true
+                status: String((taskDelegate.modelData.lastStatus && taskDelegate.modelData.lastStatus.status) || "never")
                 statusText: root.detailsStatusText
                 nextRunText: root.detailsNextRunText
                 logText: root.detailsLogText
                 onEditRequested: root.openEditEditor(taskDelegate.modelData)
-                onDeleteRequested: {
-                  root.openEditEditor(taskDelegate.modelData)
-                  root.confirmingDelete = true
-                }
+                onDeleteRequested: root.requestDelete(taskDelegate.modelData, false)
               }
             }
           }

@@ -84,11 +84,14 @@ def _normalize_schedule(schedule: dict[str, Any] | None) -> dict[str, Any]:
 def _schedule_to_timer_lines(schedule: dict[str, Any]) -> list[str]:
     mode = schedule["mode"]
     if mode == "every-minutes":
-        return [f"OnUnitActiveSec={schedule['interval']}min"]
+        interval = f"{schedule['interval']}min"
+        return [f"OnActiveSec={interval}", f"OnUnitActiveSec={interval}"]
     if mode == "every-hours":
-        return [f"OnUnitActiveSec={schedule['interval']}h"]
+        interval = f"{schedule['interval']}h"
+        return [f"OnActiveSec={interval}", f"OnUnitActiveSec={interval}"]
     if mode == "every-days":
-        return [f"OnUnitActiveSec={schedule['interval']}d"]
+        interval = f"{schedule['interval']}d"
+        return [f"OnActiveSec={interval}", f"OnUnitActiveSec={interval}"]
     if mode == "daily-at":
         return [f"OnCalendar=*-*-* {schedule['time']}:00"]
     if mode == "weekly":
@@ -158,7 +161,8 @@ def _write_or_remove_timer(task: dict[str, Any]) -> None:
     )
     timer_file.write_text(timer_content, encoding="utf-8")
     _daemon_reload()
-    _run_systemctl(["enable", "--now", _timer_name(task_id)])
+    _run_systemctl(["enable", _timer_name(task_id)])
+    _run_systemctl(["restart", _timer_name(task_id)])
 
 
 def _sync_systemd(task: dict[str, Any]) -> None:

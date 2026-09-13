@@ -43,7 +43,9 @@ Item {
     Text {
       id: statusIcon
       text: root.running ? "◉" : (root.status === "success" ? "●" : (root.status === "failed" ? "✕" : "○"))
-      color: root.foregroundColor
+      color: root.running ? Color.accent
+        : (root.status === "failed" ? Color.urgent
+        : (root.status === "success" ? Color.accent : root.foregroundColor))
       anchors.left: chevron.right
       anchors.leftMargin: Style.space(8)
       anchors.verticalCenter: parent.verticalCenter
@@ -65,7 +67,7 @@ Item {
       color: root.foregroundColor
       width: Style.space(140)
       elide: Text.ElideRight
-      visible: root.selected || hitArea.containsMouse
+      visible: !root.expanded && (root.selected || hitArea.containsMouse)
       opacity: 0.75
       anchors.right: scheduleIcon.left
       anchors.rightMargin: Style.space(8)
@@ -100,7 +102,7 @@ Item {
 
       MouseArea {
         anchors.fill: parent
-        onClicked: {
+        onClicked: function(mouse) {
           mouse.accepted = true
           if (root.running) root.stopRequested(root.taskId)
           else root.runRequested(root.taskId)

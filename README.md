@@ -52,17 +52,45 @@ omarchy bar move io.github.mgirard.omarun --section right
 ## Usage
 
 1. Open OmaRun from the `>_` widget in the bar.
-2. Select **Add**, give the task a name, and enter a command such as:
-
-   ```text
-   python3 /home/you/scripts/backup.py
-   ```
-
+2. Select **Add**, give the task a name, and enter any executable or command available to your user.
 3. Optionally enable automatic execution and select a schedule.
 4. Save the task, then use **Run** whenever you want an immediate execution.
 5. Expand the task to inspect its status, command, and current or latest output.
 
 The **Advanced** section lets you provide separate arguments, a working directory, and a timeout. A timeout of `0` means no timeout.
+
+### Command ideas
+
+OmaRun is not limited to Python. It can launch system commands, command-line applications, executable scripts, or interpreters for any language installed on the machine.
+
+| Use case | Example command |
+| --- | --- |
+| Check disk usage and keep the result | `df -h` |
+| Inspect memory usage | `free -h` |
+| Restart a user service | `systemctl --user restart syncthing.service` |
+| Update Flatpak applications without prompts | `flatpak update --noninteractive` |
+| Fast-forward a local Git checkout | `git -C /home/you/dotfiles pull --ff-only` |
+| Copy documents to an external disk or NAS | `rsync -a /home/you/Documents/ /mnt/backup/Documents/` |
+| Back up a directory with Restic | `restic backup /home/you/Documents` |
+| Synchronize files with Rclone | `rclone sync /home/you/Pictures remote:Pictures` |
+| Run a shell script | `bash /home/you/scripts/backup.sh` |
+| Run a Python utility | `python3 /home/you/scripts/organize-media.py` |
+| Run a Node.js utility | `node /home/you/scripts/check-feeds.mjs` |
+
+Some examples require the named tool and its configuration to already exist. Replace paths, remotes, and service names with your own before running them.
+
+OmaRun becomes especially useful for small personal scripts that:
+
+- back up important folders and prune old archives;
+- organize downloads, photos, music, or TV libraries;
+- synchronize a workstation with a NAS, server, or cloud remote;
+- export a database before maintenance;
+- check disk space, local services, or backup health and leave a readable report;
+- rebuild documentation, a static site, thumbnails, or media indexes;
+- fetch a feed or API snapshot for later processing;
+- perform repetitive project housekeeping across several repositories.
+
+Prefer non-interactive commands. OmaRun has no terminal in which to answer a password or confirmation prompt, so full system upgrades such as `omarchy update` are generally better launched from a terminal. If a tool supports flags such as `--noninteractive`, `--yes`, or `--force`, use them only after checking exactly what they will do.
 
 ### Keyboard controls
 

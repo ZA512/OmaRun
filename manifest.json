@@ -12,7 +12,7 @@
   },
   "barWidget": {
     "displayName": "OmaRun",
-    "category": "Utilities",
+    "category": "Productivity",
     "allowMultiple": false,
     "defaultSection": "right"
   }

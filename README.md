@@ -203,7 +203,7 @@ Before removing the plugin, delete its tasks from the OmaRun interface. This cle
 Then remove the plugin:
 
 ```sh
-omarchy plugin remove io.github.mgirard.omarun --yes
+omarchy plugin remove io.github.za512.omarun --yes
 ```
 
 The empty `~/.config/omarun/` directory may remain so a later installation can reuse it.

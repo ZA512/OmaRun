@@ -40,13 +40,13 @@ OmaRun is a lightweight, theme-aware bar widget for Omarchy Quattro. It keeps th
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/ZA512/OmaRun.git --enable
+omarchy plugin add https://github.com/za512/OmaRun.git --enable
 ```
 
 The widget defaults to the right section of the bar. Move it at any time with:
 
 ```sh
-omarchy bar move io.github.ZA512.omarun --section right
+omarchy bar move io.github.za512.omarun --section right
 ```
 
 ## Usage
@@ -193,7 +193,7 @@ Review scripts before adding them. OmaRun itself makes no remote requests and ex
 ## Update
 
 ```sh
-omarchy plugin update io.github.ZA512.omarun --yes
+omarchy plugin update io.github.za512.omarun --yes
 ```
 
 ## Remove
@@ -203,7 +203,7 @@ Before removing the plugin, delete its tasks from the OmaRun interface. This cle
 Then remove the plugin:
 
 ```sh
-omarchy plugin remove io.github.ZA512.omarun --yes
+omarchy plugin remove io.github.za512.omarun --yes
 ```
 
 The empty `~/.config/omarun/` directory may remain so a later installation can reuse it.

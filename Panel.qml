@@ -7,7 +7,7 @@ import "components" as Components
 
 Panel {
   id: root
-  moduleName: "io.github.mgirard.omarun"
+  moduleName: "io.github.za512.omarun"
   manageIpc: false
 
   property var anchorItem: null

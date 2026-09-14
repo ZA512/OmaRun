@@ -193,7 +193,7 @@ Review scripts before adding them. OmaRun itself makes no remote requests and ex
 ## Update
 
 ```sh
-omarchy plugin update io.github.mgirard.omarun --yes
+omarchy plugin update io.github.za512.omarun --yes
 ```
 
 ## Remove

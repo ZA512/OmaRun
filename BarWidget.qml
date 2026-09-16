@@ -44,18 +44,24 @@ BarWidget {
     return resolved
   }
 
+  function backendCommand(args) {
+    return ["/usr/bin/python3", "-E", "-s", "-X", "utf8", backendScriptPath()].concat(args)
+  }
+
   function parseJson(raw) {
     try { return JSON.parse(String(raw || "")) } catch (e) { return null }
   }
 
   function refreshIndicator() {
     if (indicatorProc.running) return
-    indicatorProc.command = ["python3", backendScriptPath(), "list"]
+    indicatorProc.command = backendCommand(["list"])
     indicatorProc.running = true
   }
 
   Process {
     id: indicatorProc
+    clearEnvironment: true
+    environment: ({})
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {

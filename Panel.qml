@@ -68,6 +68,10 @@ Panel {
     return resolved
   }
 
+  function backendCommand(args) {
+    return ["/usr/bin/python3", "-E", "-s", "-X", "utf8", backendScriptPath()].concat(args)
+  }
+
   function parseJson(raw) {
     try { return JSON.parse(String(raw || "")) } catch (e) { return null }
   }
@@ -85,7 +89,7 @@ Panel {
 
   function refreshTasks() {
     if (listProc.running) return
-    listProc.command = ["python3", backendScriptPath(), "list"]
+    listProc.command = backendCommand(["list"])
     listProc.running = true
   }
 
@@ -103,7 +107,7 @@ Panel {
 
   function runAction(action, taskId) {
     if (actionProc.running) return
-    actionProc.command = ["python3", backendScriptPath(), action, "--id", taskId]
+    actionProc.command = backendCommand([action, "--id", taskId])
     actionProc.running = true
   }
 
@@ -214,14 +218,14 @@ Panel {
   function refreshStatus(taskId) {
     if (statusProc.running) return
     statusProc.taskId = taskId
-    statusProc.command = ["python3", backendScriptPath(), "status", "--id", taskId]
+    statusProc.command = backendCommand(["status", "--id", taskId])
     statusProc.running = true
   }
 
   function refreshLog(taskId) {
     if (logProc.running) return
     logProc.taskId = taskId
-    logProc.command = ["python3", backendScriptPath(), "log", "--id", taskId]
+    logProc.command = backendCommand(["log", "--id", taskId])
     logProc.running = true
   }
 
@@ -233,15 +237,15 @@ Panel {
       return
     }
     if (addProc.running) return
-    var command = [
-      "python3", backendScriptPath(), "add",
+    var command = backendCommand([
+      "add",
       "--name", taskName,
       "--command", taskCommand,
       "--arguments", editorArguments,
       "--working-directory", editorWorkingDirectory,
       "--timeout-seconds", String(editorTimeoutSeconds),
       "--schedule", JSON.stringify(buildScheduleObject())
-    ]
+    ])
     addProc.command = command
     addProc.running = true
   }
@@ -258,8 +262,8 @@ Panel {
       return
     }
     if (updateProc.running) return
-    var command = [
-      "python3", backendScriptPath(), "update",
+    var command = backendCommand([
+      "update",
       "--id", String(selectedTask.id),
       "--name", taskName,
       "--command", taskCommand,
@@ -267,7 +271,7 @@ Panel {
       "--working-directory", editorWorkingDirectory,
       "--timeout-seconds", String(editorTimeoutSeconds),
       "--schedule", JSON.stringify(buildScheduleObject())
-    ]
+    ])
     updateProc.command = command
     updateProc.running = true
   }
@@ -275,7 +279,7 @@ Panel {
   function deleteTask() {
     if (!selectedTask) return
     if (deleteProc.running) return
-    deleteProc.command = ["python3", backendScriptPath(), "delete", "--id", String(selectedTask.id)]
+    deleteProc.command = backendCommand(["delete", "--id", String(selectedTask.id)])
     deleteProc.running = true
   }
 
@@ -293,6 +297,8 @@ Panel {
 
   Process {
     id: listProc
+    clearEnvironment: true
+    environment: ({})
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -313,6 +319,8 @@ Panel {
 
   Process {
     id: actionProc
+    clearEnvironment: true
+    environment: ({})
     stdout: StdioCollector { waitForEnd: true }
     stderr: StdioCollector { id: actionErr; waitForEnd: true }
     onExited: function(exitCode) {
@@ -331,6 +339,8 @@ Panel {
 
   Process {
     id: addProc
+    clearEnvironment: true
+    environment: ({})
     stdout: StdioCollector { waitForEnd: true }
     stderr: StdioCollector { id: addErr; waitForEnd: true }
     onExited: function(exitCode) {
@@ -354,6 +364,8 @@ Panel {
 
   Process {
     id: updateProc
+    clearEnvironment: true
+    environment: ({})
     stdout: StdioCollector { waitForEnd: true }
     stderr: StdioCollector { id: updateErr; waitForEnd: true }
     onExited: function(exitCode) {
@@ -371,6 +383,8 @@ Panel {
 
   Process {
     id: deleteProc
+    clearEnvironment: true
+    environment: ({})
     stdout: StdioCollector { waitForEnd: true }
     stderr: StdioCollector { id: deleteErr; waitForEnd: true }
     onExited: function(exitCode) {
@@ -390,6 +404,8 @@ Panel {
 
   Process {
     id: statusProc
+    clearEnvironment: true
+    environment: ({})
     property string taskId: ""
     stdout: StdioCollector {
       waitForEnd: true
@@ -421,6 +437,8 @@ Panel {
 
   Process {
     id: logProc
+    clearEnvironment: true
+    environment: ({})
     property string taskId: ""
     stdout: StdioCollector {
       waitForEnd: true

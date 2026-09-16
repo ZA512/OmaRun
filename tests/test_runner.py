@@ -11,6 +11,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER = ROOT / "backend" / "runner.py"
+sys.path.insert(0, str(ROOT / "backend"))
+
+from storage import LOG_STORAGE_BYTES  # noqa: E402
 
 
 class RunnerIntegrationTests(unittest.TestCase):
@@ -104,6 +107,31 @@ class RunnerIntegrationTests(unittest.TestCase):
         log = self.status_path().with_name("last.log").read_text()
         self.assertIn("/definitely/missing/omarun-command", log)
         self.assertIn("[ERROR]", log)
+
+    def test_large_output_keeps_only_a_bounded_recent_window(self):
+        byte_count = LOG_STORAGE_BYTES + 1024 * 1024
+        self.write_task(
+            f'-c "import sys; sys.stdout.buffer.write(b\\\"x\\\" * {byte_count})"'
+        )
+
+        result = subprocess.run(
+            [sys.executable, str(RUNNER), "--task-id", self.task_id],
+            env=self.env,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=30,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        log_path = self.status_path().with_name("last.log")
+        self.assertLessEqual(log_path.stat().st_size, LOG_STORAGE_BYTES)
+        with log_path.open("rb") as log:
+            beginning = log.read(64)
+            log.seek(-64, os.SEEK_END)
+            ending = log.read()
+        self.assertIn(b"earlier output omitted", beginning)
+        self.assertEqual(ending, b"x" * 64)
 
 
 if __name__ == "__main__":

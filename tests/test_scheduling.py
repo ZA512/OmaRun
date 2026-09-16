@@ -1,3 +1,4 @@
+import os
 import sys
 import tempfile
 import unittest
@@ -55,13 +56,16 @@ class ScheduleTimerTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             timer_path = Path(tmp) / f"omarun-{task_id}.timer"
-            with (
-                mock.patch.object(omarunctl, "_timer_path", return_value=timer_path),
-                mock.patch.object(omarunctl, "_daemon_reload") as daemon_reload,
-                mock.patch.object(omarunctl, "_run_systemctl") as run_systemctl,
-            ):
-                omarunctl._write_or_remove_timer(task)
-                timer_text = timer_path.read_text()
+            directory_fd = os.open(tmp, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                with (
+                    mock.patch.object(omarunctl, "_daemon_reload") as daemon_reload,
+                    mock.patch.object(omarunctl, "_run_systemctl") as run_systemctl,
+                ):
+                    omarunctl._write_or_remove_timer(task, directory_fd)
+                    timer_text = timer_path.read_text()
+            finally:
+                os.close(directory_fd)
 
         self.assertIn("OnActiveSec=6h", timer_text)
         self.assertIn("OnUnitActiveSec=6h", timer_text)

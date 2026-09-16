@@ -1,5 +1,8 @@
 import json
+import os
+import pwd
 import re
+import stat
 import tempfile
 import uuid
 from dataclasses import dataclass
@@ -11,6 +14,14 @@ CONFIG_DIR = Path.home() / ".config" / "omarun"
 STATE_DIR = Path.home() / ".local" / "state" / "omarun"
 SYSTEMD_USER_DIR = Path.home() / ".config" / "systemd" / "user"
 TASKS_FILE = CONFIG_DIR / "tasks.json"
+
+PYTHON_EXECUTABLE = Path("/usr/bin/python3")
+SYSTEMCTL_EXECUTABLE = Path("/usr/bin/systemctl")
+ENV_EXECUTABLE = Path("/usr/bin/env")
+
+LOG_SEGMENT_BYTES = 2 * 1024 * 1024
+LOG_STORAGE_BYTES = 2 * LOG_SEGMENT_BYTES
+LOG_RESPONSE_BYTES = 512 * 1024
 
 TASK_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{2,63}$")
 
@@ -47,7 +58,43 @@ def ensure_dirs() -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     (STATE_DIR / "tasks").mkdir(parents=True, exist_ok=True)
-    SYSTEMD_USER_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def user_identity() -> pwd.struct_passwd:
+    return pwd.getpwuid(os.geteuid())
+
+
+def control_environment() -> dict[str, str]:
+    """Return the fixed environment used by OmaRun's control-plane tools."""
+    identity = user_identity()
+    runtime_dir = f"/run/user/{os.geteuid()}"
+    return {
+        "HOME": identity.pw_dir,
+        "USER": identity.pw_name,
+        "LOGNAME": identity.pw_name,
+        "SHELL": identity.pw_shell or "/bin/sh",
+        "PATH": "/usr/local/bin:/usr/bin:/bin",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "XDG_RUNTIME_DIR": runtime_dir,
+        "DBUS_SESSION_BUS_ADDRESS": f"unix:path={runtime_dir}/bus",
+    }
+
+
+def verify_trusted_executable(path: Path) -> Path:
+    """Resolve a root-managed executable and reject writable replacements."""
+    if not path.is_absolute():
+        raise OmaRunError(f"Executable path must be absolute: {path}")
+    try:
+        resolved = path.resolve(strict=True)
+        metadata = resolved.stat()
+    except OSError as exc:
+        raise OmaRunError(f"Required executable is unavailable: {path}") from exc
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != 0 or metadata.st_mode & 0o022:
+        raise OmaRunError(f"Required executable is not root-managed: {path}")
+    if not os.access(resolved, os.X_OK):
+        raise OmaRunError(f"Required executable is not executable: {path}")
+    return resolved
 
 
 def _atomic_write_json(path: Path, payload: Any) -> None:

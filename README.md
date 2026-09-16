@@ -35,7 +35,7 @@ OmaRun is a lightweight, theme-aware bar widget for Omarchy Quattro. It keeps th
 
 - Omarchy 4 (Quattro) or newer.
 - A working per-user systemd manager, provided by a normal Omarchy installation.
-- Python 3. OmaRun uses only the Python standard library.
+- The root-managed interpreter at `/usr/bin/python3`. OmaRun uses only the Python standard library.
 
 ## Install
 
@@ -164,7 +164,7 @@ OmaRun is designed as a small personal script runner, not a complete cron replac
 - **Schedules belong to the user session.** The per-user systemd manager normally starts at login and may stop after logout unless lingering is configured for the account.
 - **It does not wake a suspended or powered-off computer.** Calendar timers can catch up once after the user manager returns, but monotonic interval timers pause during suspend and do not replay missed intervals.
 - **Timer precision is systemd's default.** OmaRun does not override `AccuracySec=`, whose systemd default permits coalescing timer events within a one-minute window.
-- **Only the current and most recent output are kept.** Standard output and standard error are merged in order. There is no run-history browser, log rotation, or output-size limit yet.
+- **Only a bounded current and most recent output window are kept.** Standard output and standard error are merged in order. Active output rotates across two 2 MiB segments; completed output keeps at most the newest 4 MiB, and the panel receives at most 512 KiB per refresh. OmaRun marks the display when older output was omitted. There is no run-history browser.
 - **Commands are not interpreted by a shell.** OmaRun builds an argument vector with `shlex` and starts it directly. Pipes, redirects, `&&`, glob expansion, and shell variables therefore have no implicit meaning. When shell syntax is intentional, invoke a shell explicitly, for example with command `bash -lc` and a quoted expression in **Arguments**.
 - **Scheduling is preset-based.** Complex calendar expressions, monthly schedules, dependencies between tasks, retries, and notifications are not available yet.
 - **One instance per task.** A second run is rejected while the same task is already active.
@@ -177,12 +177,15 @@ OmaRun stores only local files:
 ~/.config/omarun/tasks.json
 ~/.local/state/omarun/tasks/<task-id>/status.json
 ~/.local/state/omarun/tasks/<task-id>/current.log
+~/.local/state/omarun/tasks/<task-id>/current.log.1
 ~/.local/state/omarun/tasks/<task-id>/last.log
 ~/.config/systemd/user/omarun-<task-id>.service
 ~/.config/systemd/user/omarun-<task-id>.timer
 ```
 
-The generated unit never contains the saved command. Its `ExecStart` is fixed to OmaRun's Python runner plus an automatically generated task ID. Task IDs are restricted to lowercase letters, numbers, and dashes, and OmaRun's own unit operations are restricted to the `omarun-<task-id>.service` and `omarun-<task-id>.timer` names. The runner reads the command and arguments from `tasks.json` and launches them directly, without an implicit shell.
+The generated unit never contains the saved command. Its `ExecStart` uses a cleared environment, the root-managed `/usr/bin/python3`, Python startup isolation flags, OmaRun's runner, and an automatically generated task ID. Task IDs are restricted to lowercase letters, numbers, and dashes. Generated units carry an OmaRun ownership marker; existing foreign files, symlinks, or modified legacy units at the same names are refused rather than overwritten or removed. OmaRun's own unit operations are restricted to the `omarun-<task-id>.service` and `omarun-<task-id>.timer` names.
+
+The runner reconstructs the normal systemd user-manager environment only after its own trusted startup, then applies the task's explicit environment overrides and launches the saved command directly without an implicit shell. Manager variables that require shell-style escaping are not imported automatically; provide them explicitly in the task environment when needed.
 
 Deleting a task from OmaRun stops its service, disables its timer, removes the generated units, and deletes that task's OmaRun status and logs. It never deletes the script or executable referenced by the task.
 

@@ -15,7 +15,7 @@ OmaRun is a lightweight, theme-aware bar widget for Omarchy Quattro. It keeps th
 - Configure arguments, a working directory, environment variables through the CLI, and an optional timeout.
 - Prevent overlapping runs of the same task.
 - Match the active Omarchy theme and font automatically.
-- Run entirely as the current user: no root service, `sudo`, cron daemon, or external Python package is required.
+- Operate entirely inside the current user session; no administrator access, cron daemon, or third-party Python package is required.
 
 ## Screenshots
 
@@ -67,7 +67,7 @@ OmaRun is not limited to Python. It can launch system commands, command-line app
 | --- | --- |
 | Check disk usage and keep the result | `df -h` |
 | Inspect memory usage | `free -h` |
-| Restart a user service | `systemctl --user restart syncthing.service` |
+| Print kernel and operating-system information | `uname -a` |
 | Update Flatpak applications without prompts | `flatpak update --noninteractive` |
 | Fast-forward a local Git checkout | `git -C /home/you/dotfiles pull --ff-only` |
 | Copy documents to an external disk or NAS | `rsync -a /home/you/Documents/ /mnt/backup/Documents/` |
@@ -182,11 +182,13 @@ OmaRun stores only local files:
 ~/.config/systemd/user/omarun-<task-id>.timer
 ```
 
+The generated unit never contains the saved command. Its `ExecStart` is fixed to OmaRun's Python runner plus an automatically generated task ID. Task IDs are restricted to lowercase letters, numbers, and dashes, and OmaRun's own unit operations are restricted to the `omarun-<task-id>.service` and `omarun-<task-id>.timer` names. The runner reads the command and arguments from `tasks.json` and launches them directly, without an implicit shell.
+
 Deleting a task from OmaRun stops its service, disables its timer, removes the generated units, and deletes that task's OmaRun status and logs. It never deletes the script or executable referenced by the task.
 
 ## Security model
 
-Omarchy plugins run unsandboxed with your user permissions. OmaRun does not request elevation and never adds `sudo` automatically, but every command you save has the same access to your files and session as if you launched it yourself.
+Omarchy plugins run unsandboxed with your user permissions. OmaRun does not request elevated privileges or add an elevation wrapper, but every command you save has the same access to your files and session as if you launched it yourself.
 
 Review scripts before adding them. OmaRun itself makes no remote requests and executes commands without an implicit shell, which avoids accidental shell expansion but is not a security boundary.
 
